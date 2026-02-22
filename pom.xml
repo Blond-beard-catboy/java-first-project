@@ -10,9 +10,8 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>world-domain</module>
-        <module>world-generator</module>
-        <module>world-cli</module>
+        <module>world</module>
+
     </modules>
 
     <properties>
