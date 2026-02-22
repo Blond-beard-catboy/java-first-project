@@ -1,214 +1,133 @@
-package org.example.world.cli;
-
-import org.example.world.domain.Artifact;
-import org.example.world.domain.DayEvent;
-import org.example.world.domain.EnvironmentSnapshot;
-import org.example.world.domain.Hero;
-import org.example.world.domain.Pet;
-import org.example.world.domain.VirtualWorld;
-import org.example.world.domain.WorldCatalog;
-import org.example.world.generator.WeatherSelection;
-import org.example.world.generator.WorldGenerator;
+package org.example;
 
 import java.util.Scanner;
 
 public class Main {
-    private static final long RESULT_LINE_DELAY_MS = 260L;
-    private static final long RESULT_SECTION_DELAY_MS = 520L;
+
+    // 1. Константы и массивы (String[]) для хранения наборов данных
+    static final String[] ORIGIN_OPTIONS = {"из дворянского рода", "с улиц большого города", "из лесной глуши", "с далеких парящих островов"};
+    static final String[] TRAIT_OPTIONS = {"решительный", "осторожный", "авантюрный", "добродушный", "хитрый"};
+    static final String[] PET_TYPES = {"дракончик", "лиса-дух", "механический паук", "лунный кот"};
+    static final String[] WEATHER_OPTIONS = {"дождь", "туман", "ясно", "буря"};
+    static final String[] LOCATION_OPTIONS = {"парящий город Аэрис", "подледный порт Нордхейм", "механический каньон Феррус"};
+    static final String[] EVENT_MEETINGS = {"старый боевой товарищ", "странный незнакомец в маске", "архивариус"};
 
     public static void main(String[] args) {
-        WorldGenerator generator = new WorldGenerator();
+        Scanner scanner = new Scanner(System.in);
 
-        try (Scanner scanner = new Scanner(System.in)) {
-            printLine("=== Генератор виртуального мира ===");
-            String heroName = readNonEmptyLine(scanner, "Введите имя героя: ");
-            int classChoice = readIntInRange(
-                    scanner,
-                    "Выберите класс героя:%n1. Воин%n2. Маг%n3. Лучник%n4. Лекарь%nВаш выбор: ",
-                    1,
-                    4
-            );
+        System.out.println("=== Генератор виртуального мира ===");
 
-            int[] attributes = distributeAttributes(scanner, WorldCatalog.TOTAL_ATTRIBUTE_POINTS);
-            String requestedWeather = readOptionalLine(
-                    scanner,
-                    "Введите желаемую погоду (дождь/туман/ясно/буря) или нажмите Enter для случайной: "
-            );
+        // 2. Ввод данных пользователя
+        System.out.print("Введите имя героя: ");
+        String heroName = scanner.nextLine();
 
-            WeatherSelection weatherSelection = generator.selectWeather(requestedWeather);
-            if (weatherSelection.fallbackUsed()) {
-                printLine("Такой погоды в каталоге нет. Выбрана случайная погода.");
-            }
+        System.out.println("Выберите класс героя:\n1. Воин\n2. Маг\n3. Лучник\n4. Лекарь");
+        int classChoice = readIntInRange(scanner, "Ваш выбор: ", 1, 4);
 
-            VirtualWorld world = generator.createWorld(
-                    heroName,
-                    classChoice,
-                    attributes,
-                    weatherSelection.weather()
-            );
+        // 7. Условный оператор switch-expressions в стрелочной нотации
+        String heroClass = switch (classChoice) {
+            case 1 -> "Воин";
+            case 2 -> "Маг";
+            case 3 -> "Лучник";
+            case 4 -> "Лекарь";
+            default -> "Странник";
+        };
 
-            printWorld(world);
-        }
-    }
+        System.out.println("\nРаспределите 12 очков между характеристиками.");
+        int strength = readIntInRange(scanner, "Сила (от 0 до 12): ", 0, 12);
+        int dexterity = readIntInRange(scanner, "Ловкость (от 0 до " + (12 - strength) + "): ", 0, 12 - strength);
+        int intelligence = 12 - strength - dexterity; // Остаток отдаем интеллекту
+        System.out.println("Оставшиеся " + intelligence + " очков добавлены в Интеллект.");
 
-    private static void printWorld(VirtualWorld world) {
-        Hero hero = world.hero();
-        Pet pet = world.pet();
-        Artifact artifact = world.artifact();
-        EnvironmentSnapshot environment = world.environment();
-        DayEvent dayEvent = world.dayEvent();
-        int[] luckRolls = hero.luckRolls();
+        System.out.print("\nВведите желаемую погоду (дождь/туман/ясно/буря) или нажмите Enter для случайной: ");
+        String requestedWeather = scanner.nextLine().trim();
 
-        printSlowSection("%n=== Виртуальный мир создан ===%n");
-        printSlowSection("Объект 1. Герой%n");
-        printSlow("Имя: %s%n", hero.name());
-        printSlow("Класс: %s%n", hero.heroClass().title());
-        printSlow("Здоровье: %d%n", hero.heroClass().health());
-        printSlow("Атака: %d%n", hero.heroClass().attack());
-        printSlow("Сила заклинаний: %d%n", hero.heroClass().magicPower());
-        printSlow(
-                "Сила: %d, Ловкость: %d, Интеллект: %d, Харизма: %d%n",
-                hero.strength(),
-                hero.dexterity(),
-                hero.intelligence(),
-                hero.charisma()
-        );
-        printSlow("Происхождение: %s%n", hero.origin());
-        printSlow("Черта характера: %s%n", hero.trait());
-        printSlow("Удача: %d (%d + %d + %d)%n", hero.luck(), luckRolls[0], luckRolls[1], luckRolls[2]);
-        printSlow("Знак судьбы: %s%n", hero.fate());
-
-        printSlowSection("%nОбъект 2. Питомец%n");
-        printSlow("Тип: %s%n", pet.type());
-        printSlow("Окрас: %s%n", pet.color());
-        printSlow("Особое умение: %s%n", pet.skill());
-        printSlow("Любимое лакомство: %s%n", pet.snack());
-        printSlow("Привязанность: %d/20%n", pet.attachment());
-
-        printSlowSection("%nОбъект 3. Таинственный предмет%n");
-        printSlow("Название: %s%n", artifact.name());
-        printSlow("Возраст: %s%n", artifact.age());
-        printSlow("Материал: %s%n", artifact.material());
-        printSlow("Свойство: %s%n", artifact.property());
-        printSlow("Заряд мощности: %d/100%n", artifact.powerCharge());
-
-        printSlowSection("%nОбъект 4. Окружение%n");
-        printSlow("Локация: %s%n", environment.location());
-        printSlow("Погода: %s%n", environment.weather());
-        printSlow("Атмосфера: %s%n", environment.atmosphere());
-
-        printSlowSection("%nОбъект 5. Событие дня%n");
-        printSlow("Неожиданная встреча: %s%n", dayEvent.meeting());
-        printSlow("Итог: герой %s.%n", dayEvent.outcome());
-        printSlow(
-                "Уровень необычности: %d/24, риск: %s%n",
-                dayEvent.oddnessLevel(),
-                dayEvent.dangerLevel()
-        );
-
-        printSlowSection("%n--- Сценарий мира --- %n");
-        printSlow(
-                "%s (%s) прибывает в %s, где погода: %s, а атмосфера %s. %n" +
-                        "Рядом с героем шагает %s (%s), который %s. %n" +
-                        "В этот день появляется %s, и герой %s. %n" +
-                        "Ключом к развязке становится артефакт \"%s\" из материала \"%s\": он %s. %n" +
-                        "Текущий заряд %d/100, а значит %s.%n",
-                hero.name(),
-                hero.heroClass().title(),
-                environment.location(),
-                environment.weather(),
-                environment.atmosphere(),
-                pet.type(),
-                pet.color(),
-                pet.skill(),
-                dayEvent.meeting(),
-                dayEvent.outcome(),
-                artifact.name(),
-                artifact.material(),
-                artifact.property(),
-                artifact.powerCharge(),
-                hero.fate()
-        );
-    }
-
-    private static int[] distributeAttributes(Scanner scanner, int totalPoints) {
-        String[] attributes = {"Сила", "Ловкость", "Интеллект", "Харизма"};
-        int[] values = new int[attributes.length];
-        int remainingPoints = totalPoints;
-
-        for (int i = 0; i < attributes.length - 1; i++) {
-            String prompt = String.format("%s (введите от 0 до %d): ", attributes[i], remainingPoints);
-            int allocated = readIntInRange(scanner, prompt, 0, remainingPoints);
-            values[i] = allocated;
-            remainingPoints -= allocated;
+        // 9. Поиск по массиву (проверка, есть ли введенная погода в списке)
+        String weather;
+        int weatherIndex = findIndexIgnoreCase(WEATHER_OPTIONS, requestedWeather);
+        if (weatherIndex != -1) { // 5. Условный оператор if-else
+            weather = WEATHER_OPTIONS[weatherIndex];
+        } else {
+            System.out.println("Погода не найдена или не введена. Выбрана случайная.");
+            weather = getRandomElement(WEATHER_OPTIONS);
         }
 
-        values[attributes.length - 1] = remainingPoints;
-        System.out.printf(
-                "Оставшиеся %d очков добавлены в характеристику \"%s\".%n",
-                remainingPoints,
-                attributes[attributes.length - 1]
-        );
-        return values;
+        // 10. Math.random() для выбора случайных элементов
+        String origin = getRandomElement(ORIGIN_OPTIONS);
+        String trait = getRandomElement(TRAIT_OPTIONS);
+
+        // 11. Цикл для расчёта параметра "Удача" (имитация 3 кубиков)
+        int luck = 0;
+        int[] diceRolls = new int[3];
+        for (int i = 0; i < 3; i++) {
+            diceRolls[i] = 1 + (int) (Math.random() * 6);
+            luck += diceRolls[i];
+        }
+
+        // 6. Тернарный оператор
+        String fate = (luck >= 12) ? "Судьба благоволит герою" : "Мир готовит герою испытание";
+
+        // Генерация остальных объектов (Питомец, Окружение, Событие)
+        String petType = getRandomElement(PET_TYPES);
+        int petAttachment = 1 + (int) (Math.random() * 20); // от 1 до 20
+
+        String location = getRandomElement(LOCATION_OPTIONS);
+        String meeting = getRandomElement(EVENT_MEETINGS);
+
+        // 4. Форматированный вывод данных в консоль
+        System.out.println("\n=== ВИРТУАЛЬНЫЙ МИР СОЗДАН ===");
+        System.out.printf("Объект 1. Герой: %s (%s)%n", heroName, heroClass);
+        System.out.printf("Характеристики -> Сила: %d, Ловкость: %d, Интеллект: %d%n", strength, dexterity, intelligence);
+        System.out.printf("Происхождение: %s | Характер: %s%n", origin, trait);
+        System.out.printf("Удача: %d (%d + %d + %d)%n", luck, diceRolls[0], diceRolls[1], diceRolls[2]);
+        System.out.printf("Знак судьбы: %s%n", fate);
+
+        System.out.printf("\nОбъект 2. Питомец: %s (Привязанность: %d/20)%n", petType, petAttachment);
+        System.out.printf("Объект 3. Локация: %s (Погода: %s)%n", location, weather);
+        System.out.printf("Объект 4. Случайная встреча: %s%n", meeting);
+
+        System.out.println("\n--- СЦЕНАРИЙ МИРА ---");
+        System.out.printf("%s, по классу %s, родом %s, прибывает в %s.\n", heroName, heroClass, origin, location);
+        System.out.printf("Погода сегодня: %s. Рядом бежит верный %s.\n", weather, petType);
+        System.out.printf("Внезапно на пути появляется %s... %s!\n", meeting, fate);
+
+        scanner.close();
     }
 
-    private static int readIntInRange(Scanner scanner, String prompt, int min, int max) {
+    // --- 13. Не менее 3-ех созданных методов ---
+
+    // Метод 1: Безопасный ввод числа в заданном диапазоне
+    public static int readIntInRange(Scanner scanner, String prompt, int min, int max) {
         while (true) {
-            System.out.printf(prompt);
-            String rawValue = scanner.nextLine().trim();
-            int parsedValue;
-
-            try {
-                parsedValue = Integer.parseInt(rawValue);
-            } catch (NumberFormatException exception) {
-                printLine("Ошибка: нужно ввести целое число.");
-                continue;
-            }
-
-            if (parsedValue < min || parsedValue > max) {
-                System.out.printf("Ошибка: допустимый диапазон от %d до %d.%n", min, max);
+            System.out.print(prompt);
+            if (scanner.hasNextInt()) {
+                int value = scanner.nextInt();
+                scanner.nextLine(); // очистка буфера
+                if (value >= min && value <= max) {
+                    return value;
+                } else {
+                    System.out.printf("Ошибка: введите число от %d до %d.\n", min, max);
+                }
             } else {
-                return parsedValue;
+                System.out.println("Ошибка: нужно ввести целое число.");
+                scanner.nextLine(); // очистка некорректного ввода
             }
         }
     }
 
-    private static String readNonEmptyLine(Scanner scanner, String prompt) {
-        while (true) {
-            System.out.printf(prompt);
-            String value = scanner.nextLine().trim();
-            if (value.isEmpty()) {
-                printLine("Имя не может быть пустым. Повторите ввод.");
-            } else {
-                return value;
+    // Метод 2: Выбор случайного элемента из массива
+    public static String getRandomElement(String[] array) {
+        int index = (int) (Math.random() * array.length);
+        return array[index];
+    }
+
+    // Метод 3: Поиск элемента в массиве без учета регистра
+    public static int findIndexIgnoreCase(String[] array, String target) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i].equalsIgnoreCase(target)) {
+                return i;
             }
         }
-    }
-
-    private static String readOptionalLine(Scanner scanner, String prompt) {
-        System.out.printf(prompt);
-        return scanner.nextLine().trim();
-    }
-
-    private static void printSlow(String format, Object... args) {
-        System.out.printf(format, args);
-        pause(RESULT_LINE_DELAY_MS);
-    }
-
-    private static void printSlowSection(String format, Object... args) {
-        System.out.printf(format, args);
-        pause(RESULT_SECTION_DELAY_MS);
-    }
-
-    private static void pause(long delayMs) {
-        try {
-            Thread.sleep(delayMs);
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    private static void printLine(String message) {
-        System.out.printf("%s%n", message);
+        return -1;
     }
 }
